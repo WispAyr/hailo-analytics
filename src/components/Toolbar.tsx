@@ -6,9 +6,10 @@ interface ToolbarProps {
   onOpenSettings: () => void;
   onOpenZoneEditor: () => void;
   onOpenModels: () => void;
+  onOpenCameraSetup: () => void;
 }
 
-export function Toolbar({ onOpenSettings, onOpenZoneEditor, onOpenModels }: ToolbarProps) {
+export function Toolbar({ onOpenSettings, onOpenZoneEditor, onOpenModels, onOpenCameraSetup }: ToolbarProps) {
   const {
     showHeatmap,
     toggleHeatmap,
@@ -141,6 +142,14 @@ export function Toolbar({ onOpenSettings, onOpenZoneEditor, onOpenModels }: Tool
         >
           <span>🧠</span>
           <span>Models</span>
+        </button>
+        
+        <button
+          onClick={onOpenCameraSetup}
+          className="flex items-center gap-2 px-3 py-1.5 bg-green-500/20 hover:bg-green-500/30 text-green-400 rounded-lg text-sm transition-colors"
+        >
+          <span>📷</span>
+          <span>Cameras</span>
         </button>
         
         <button

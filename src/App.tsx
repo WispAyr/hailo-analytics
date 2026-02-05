@@ -11,6 +11,7 @@ import { Charts } from './components/Charts';
 import { SettingsPanel } from './components/SettingsPanel';
 import { ZoneEditor } from './components/ZoneEditor';
 import { ModelPanel } from './components/ModelPanel';
+import { CameraSetup } from './components/CameraSetup';
 import {
   mockCameras,
   mockZones,
@@ -26,6 +27,10 @@ function App() {
   const [showZoneEditor, setShowZoneEditor] = useState(false);
   const [showCharts, setShowCharts] = useState(false);
   const [showModels, setShowModels] = useState(false);
+  const [showCameraSetup, setShowCameraSetup] = useState(false);
+  
+  // Check if we need to show camera setup on first load
+  const needsSetup = useStore(state => state.cameras.length === 0) && !localStorage.getItem('selected_cameras');
   
   const {
     useMockData,
@@ -43,7 +48,7 @@ function App() {
   // WebSocket connection (only when not using mock data)
   useWebSocket('ws://localhost:3851/ws');
 
-  // Initialize with mock data on mount
+  // Initialize on mount
   useEffect(() => {
     if (useMockData) {
       setCameras(mockCameras);
@@ -58,10 +63,33 @@ function App() {
       startMockSimulation();
     } else {
       stopMockSimulation();
+      // Load saved cameras from localStorage
+      const savedCameras = localStorage.getItem('selected_cameras');
+      const go2rtcUrl = localStorage.getItem('go2rtc_url') || 'http://localhost:1984';
+      if (savedCameras) {
+        const cameraIds = JSON.parse(savedCameras) as string[];
+        const cameras = cameraIds.map(id => ({
+          id,
+          name: id.split(/[-_]/).map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' '),
+          location: 'Auto-discovered',
+          streamUrl: `${go2rtcUrl}/api/frame.jpeg?src=${id}`,
+          status: 'online' as const,
+          resolution: '1920x1080',
+          fps: 30,
+        }));
+        setCameras(cameras);
+      }
     }
 
     return () => stopMockSimulation();
   }, [useMockData]);
+  
+  // Show setup prompt on first load
+  useEffect(() => {
+    if (needsSetup && !useMockData) {
+      setShowCameraSetup(true);
+    }
+  }, [needsSetup, useMockData]);
 
   return (
     <div className="min-h-screen bg-[#0a0a0f] flex flex-col grid-overlay">
@@ -97,6 +125,7 @@ function App() {
         onOpenSettings={() => setShowSettings(true)}
         onOpenZoneEditor={() => setShowZoneEditor(true)}
         onOpenModels={() => setShowModels(true)}
+        onOpenCameraSetup={() => setShowCameraSetup(true)}
       />
 
       {/* Main content */}
@@ -159,6 +188,16 @@ function App() {
           <ModelPanel
             isOpen={showModels}
             onClose={() => setShowModels(false)}
+          />
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {showCameraSetup && (
+          <CameraSetup
+            isOpen={showCameraSetup}
+            onClose={() => setShowCameraSetup(false)}
+            onComplete={() => setShowCameraSetup(false)}
           />
         )}
       </AnimatePresence>

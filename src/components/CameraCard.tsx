@@ -88,13 +88,12 @@ export function CameraCard({ camera, onClick, expanded = false }: CameraCardProp
       >
         {isOnline ? (
           <>
-            {/* Placeholder for MJPEG stream */}
-            <div className="absolute inset-0 bg-gradient-to-br from-[#1a1a25] to-[#0a0a0f] flex items-center justify-center">
-              <div className="text-center">
-                <div className="text-4xl mb-2">📹</div>
-                <div className="text-xs text-gray-500 font-mono">{camera.streamUrl}</div>
-              </div>
-            </div>
+            {/* Live camera frame */}
+            <CameraFrame 
+              streamUrl={camera.streamUrl} 
+              cameraId={camera.id}
+              isActive={isCyclingActive}
+            />
             
             {/* Overlays */}
             {showZones && dimensions.width > 0 && (
@@ -265,5 +264,59 @@ function PersonBoundingBox({
         {Math.round(person.confidence * 100)}%
       </div>
     </motion.div>
+  );
+}
+
+// Camera frame component that handles live image updates
+function CameraFrame({ 
+  streamUrl, 
+  cameraId, 
+  isActive 
+}: { 
+  streamUrl: string; 
+  cameraId: string; 
+  isActive: boolean;
+}) {
+  const [imageKey, setImageKey] = useState(0);
+  const [imageLoaded, setImageLoaded] = useState(false);
+  const [imageError, setImageError] = useState(false);
+
+  // Refresh frame - faster when cycling is active on this camera
+  useEffect(() => {
+    const interval = isActive ? 500 : 5000; // 500ms when active, 5s otherwise
+    const timer = setInterval(() => setImageKey(k => k + 1), interval);
+    return () => clearInterval(timer);
+  }, [isActive]);
+
+  // Build URL with cache-bust
+  const imageUrl = streamUrl.includes('?') 
+    ? `${streamUrl}&t=${imageKey}` 
+    : `${streamUrl}?t=${imageKey}`;
+
+  return (
+    <div className="absolute inset-0 bg-black">
+      {!imageLoaded && !imageError && (
+        <div className="absolute inset-0 flex items-center justify-center">
+          <div className="w-8 h-8 border-2 border-cyan-500 border-t-transparent rounded-full animate-spin" />
+        </div>
+      )}
+      {imageError && (
+        <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-[#1a1a25] to-[#0a0a0f]">
+          <div className="text-center">
+            <div className="text-4xl mb-2">📷</div>
+            <div className="text-xs text-red-400">Connection failed</div>
+            <div className="text-[10px] text-gray-600 mt-1 font-mono max-w-[200px] truncate">{streamUrl}</div>
+          </div>
+        </div>
+      )}
+      <img
+        key={imageKey}
+        src={imageUrl}
+        alt={cameraId}
+        className={`w-full h-full object-cover transition-opacity ${imageLoaded ? 'opacity-100' : 'opacity-0'}`}
+        onLoad={() => { setImageLoaded(true); setImageError(false); }}
+        onError={() => { setImageError(true); setImageLoaded(false); }}
+      />
+    </div>
   );
 }
